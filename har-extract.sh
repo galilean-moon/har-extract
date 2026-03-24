@@ -9,23 +9,28 @@ fi
 
 FILE=$1
 MATCH=""
+declare -A SEEN_APEX
 
-if command -v jq >/dev/null 2>&1; then
+if command -v jq >/dev/null 2>&1 && command -v dig >/dev/null 2>&1; then
 	printf "\n~=~=~=~ Extracting redirects and URL for domains(): ~=~=~=~\n"
 	jq -r '.log.pages[] | select (.title) | .title' "$FILE"
 
-	printf "\n~=~=~=~ Redirects and IPs: ~=~=~=~\n"	
+	printf "\n~=~=~=~ Redirects, IPs, and NS hostnames: ~=~=~=~\n"	
 	MATCH=$(jq -r '.log.entries[] | select (.response.redirectURL != "") | .response.redirectURL' "$FILE" | sed 's/https*:\/\///g; s/\/.*//g' | sort -u)
-	for line in $MATCH; do
+	while IFS= read -r line; do
+		[[ -z "$line" ]] && continue
 		if [[ $line == "www."* ]]; then
-			echo "$line" | tee >(sed 's/www.//g')
+			printf "%s\n%s\n" "$line" "${line#www.}"
+			SEEN_APEX["${line#www.}"]=1
 		else
 			printf "%s\nwww.%s\n" "$line" "$line"
+			SEEN_APEX["$line"]=1
 		fi
-	done
+	done <<< "$MATCH"
 	jq -r '.log.entries[] | select (.serverIPAddress  != null) | .serverIPAddress' "$FILE" | sort -u
+	for apex in "${!SEEN_APEX[@]}"; do dig "$apex" NS +short | sed 's/\.$//' | sort; done
 	exit 0
 else
-	printf "\njq is not installed. This program requires jq to run.\n\nTo install jq, run the command 'apt-get install jq.'\n\n"
+	printf "\njq and/or dig is not installed. This program requires both to run.\n\nTo install, run the command 'sudo apt-get install jq dnsutils'\n\n"
 	exit 1
 fi
