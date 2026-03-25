@@ -31,6 +31,5 @@ $har.log.entries |
     Sort-Object -Unique
 
 foreach ($apex in $apexes.Keys) {
-    Write-Host "`n  $apex"
     Resolve-DnsName -Name $apex -Type NS | Where-Object { $_.Type -eq "NS" } | ForEach-Object { $_.NameHost.Trim() } | Sort-Object
 }
