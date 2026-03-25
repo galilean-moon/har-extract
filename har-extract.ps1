@@ -18,7 +18,6 @@ $domains = $har.log.entries |
     Sort-Object -Unique
 
 $apexes = @{}
-$seen = @{}
 
 foreach ($line in $domains) {
     Write-Host $line
